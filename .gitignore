@@ -1,0 +1,25 @@
+/.gradle/
+/build/
+/.research/
+/backups/
+/instances/
+/assets/
+/libraries/
+/meta/
+/cache/
+/logs/
+/translations/
+/catpacks/
+/iconthemes/
+/themes/
+/java/
+/accounts.json
+/freesmlauncher.cfg
+/prismlauncher.cfg
+/metacache
+/Prism Launcher_nomigrate.txt
+/run/
+/.idea/
+/.vscode/
+*.iml
+*.log

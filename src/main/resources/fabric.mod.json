@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "chustatsu",
+  "version": "${version}",
+  "name": "ChuStatsu",
+  "description": "PikaNetwork BedWars statistics for Ornithe Minecraft 1.8.9",
+  "authors": ["liwwyy"],
+  "contact": {"sources": "https://github.com/liwwyy/ChuStatsu"},
+  "icon": "assets/chustatsu/icon.png",
+  "license": "All-Rights-Reserved",
+  "environment": "client",
+  "entrypoints": {
+    "init": ["dev.chustatsu.ChuStatsu"]
+  },
+  "mixins": ["chustatsu.mixins.json"],
+  "depends": {
+    "minecraft": "1.8.9",
+    "fabricloader": ">=0.19.5",
+    "java": ">=25",
+    "osl": ">=0.21.0",
+    "oneconfigv1": ">=1.2.6"
+  }
+}

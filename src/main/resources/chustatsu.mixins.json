@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "dev.chustatsu.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": ["GameGuiMixin", "PlayerTabOverlayMixin", "PlayerRendererMixin", "EntityRendererLabelInvoker", "ClientPlayNetworkHandlerMixin"],
+  "injectors": {"defaultRequire": 1}
+}
