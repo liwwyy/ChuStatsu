@@ -36,7 +36,7 @@ Close a running game before installing the new jar. The scripts use the full ins
 
 - Minecraft 1.8.9 uses Feather Gen2 mappings, Fabric Loader 0.19.5, OSL 0.21.0, and the installed OneConfig 1.2.6 API. OneConfig v1 is the sole configuration system.
 - The API worker has four threads and one shared 250 ms request schedule. A 429 response pauses all workers for the server's `Retry-After` period. Rate-limited entries retry on the first normal refresh after the cooldown; other errors retain a short retry delay. Cached profile data also supplies friend names.
-- The head column has room around the first separator, and names have a three-pixel inset. API errors show one status across the affected stat area, including HTTP errors and rate limits; cached successful stats remain visible during transient failures. HUD and TAB use PikaStats-style translucent white alternating rows, with row text lowered one pixel.
+- The head column has room around the first separator, and names have a three-pixel inset. API errors show one status across the affected stat area, including HTTP errors and rate limits; cached successful stats remain visible during transient failures. HUD and TAB use PikaStats-style translucent white alternating rows, drawn with alpha testing disabled, with row text lowered one pixel.
 - Denicking correlates an unambiguous same-team removal and addition. The default-on `Waiting room only` switch limits attempts to the pre-game waiting room; turning it off permits attempts in other PikaNetwork phases. Debug logging records the packet context and each accepted or rejected candidate.
 - HUD/TAB editor handles are single-instance. Older saved profiles may contain a duplicate handle that OneConfig rejects; leave the saved files intact.
 
@@ -50,4 +50,4 @@ The bundled Poppins font files include their OFL notice at `src/main/resources/a
 
 ## Latest local verification
 
-The required Gradle build passed all 34 tests. The remapped jar was installed in the moved beta instance; the built and installed copies both have SHA-256 `a6a16a0db5af77202c2ea5dbbecec3af70b899b8c1f5bcb6ec57a6591e37505a`. The previous project-local game process was closed before installation. The maintainer will launch and test this build manually; no launch was attempted during this update.
+The required Gradle build passed all 34 tests. The remapped jar was installed in the moved beta instance; the built and installed copies both have SHA-256 `4152c7294e14f2678ed8e3c601e66c8b7851484bd297558d738f1b470d11a0c3`. The previous project-local game process was closed before installation. The maintainer will launch and test this build manually; no launch was attempted during this update. The September 28 denick log contains one inferred mapping outside the waiting room and none from 991 waiting-room team packets, so this capture does not confirm successful waiting-room denicking.

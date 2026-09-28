@@ -228,7 +228,7 @@ public final class StatsController {
             String status = ColumnLayout.status(row.stats);
             int[] span = status == null ? null : statusSpan(columns, row.stats);
             if (ChuStatsuConfig.hudAlternatingRows && (i & 1) == 0) {
-                GuiElement.fill(rowX, rowY, rowX + totalWidth, rowY + 11, ROW_STRIPE);
+                PanelStyle.rounded(rowX, rowY, rowX + totalWidth, rowY + 11, 0, ROW_STRIPE);
             }
             for (int c = 0; c < columns.size(); c++) {
                 String column = columns.get(c);
@@ -407,7 +407,7 @@ public final class StatsController {
             String status = ColumnLayout.status(view);
             int[] span = status == null ? null : statusSpan(columns, view);
             if (ChuStatsuConfig.tabAlternatingRows && (i & 1) == 0)
-                GuiElement.fill(rowX, rowY, rowX + tableWidth, rowY + 11, ROW_STRIPE);
+                PanelStyle.rounded(rowX, rowY, rowX + tableWidth, rowY + 11, 0, ROW_STRIPE);
             int cellX = rowX;
             for (int c = 0; c < columns.size(); c++) {
                 String column = columns.get(c);
