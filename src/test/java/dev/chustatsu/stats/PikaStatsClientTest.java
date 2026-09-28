@@ -106,6 +106,40 @@ public final class PikaStatsClientTest {
     }
 
     @Test
+    public void leaderboardRateLimitUsesTheSameCooldownAndSingleStatus() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        AtomicInteger leaderboards = new AtomicInteger();
+        server.createContext("/api/profile/", exchange -> {
+            if (exchange.getRequestURI().getQuery() != null && leaderboards.incrementAndGet() == 1) {
+                exchange.getResponseHeaders().add("Retry-After", "1");
+                exchange.sendResponseHeaders(429, -1);
+            } else {
+                byte[] body = (exchange.getRequestURI().getQuery() == null
+                    ? "{\"rank\":{\"level\":12}}"
+                    : "{\"Wins\":{\"entries\":[{\"id\":\"Alice\",\"value\":3}]}}")
+                    .getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, body.length);
+                try (var output = exchange.getResponseBody()) { output.write(body); }
+            }
+            exchange.close();
+        });
+        server.start();
+        PikaStatsClient client = new PikaStatsClient("http://127.0.0.1:"
+            + server.getAddress().getPort() + "/api/profile/");
+        try {
+            StatsView limited = await(client, "Alice", 0);
+            assertEquals(StatsView.Status.ERROR, limited.status());
+            assertEquals("Rate limited", limited.message());
+            Thread.sleep(1_100L);
+            assertEquals(StatsView.Status.READY, await(client, "Alice", 0).status());
+            assertEquals(2, leaderboards.get());
+        } finally {
+            client.close();
+            server.stop(0);
+        }
+    }
+
+    @Test
     public void sharesThePacedProfileResponseWithFriendsAcrossModes() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         AtomicInteger profiles = new AtomicInteger();

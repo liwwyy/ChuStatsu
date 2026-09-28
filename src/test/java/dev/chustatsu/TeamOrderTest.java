@@ -32,5 +32,8 @@ public final class TeamOrderTest {
         org.junit.Assert.assertArrayEquals(new int[] {2, 4}, StatsController.statusSpan(columns, rateLimited));
         org.junit.Assert.assertArrayEquals(new int[] {2, 5}, StatsController.statusSpan(
             List.of("Head", "Dynamic name box", "Level", "Ping", "FKDR", "WLR"), rateLimited));
+        StatsView serverError = StatsView.error("Dave", StatsView.Status.ERROR, "API HTTP 500");
+        org.junit.Assert.assertArrayEquals(new int[] {2, 5}, StatsController.statusSpan(
+            List.of("Head", "Dynamic name box", "Level", "Ping", "FKDR", "WLR"), serverError));
     }
 }

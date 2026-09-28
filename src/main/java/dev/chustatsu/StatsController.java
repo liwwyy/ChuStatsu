@@ -31,6 +31,7 @@ import org.lwjgl.opengl.GL11;
 public final class StatsController {
     private static final String[] NAMETAG_STATS = {"FKDR", "Level", "WLR", "Winstreak", "Final kills", "Wins", "Beds"};
     private static final int DIVIDER_COLOR = 0x80B6C4D0;
+    private static final int TAB_ROW_STRIPE = 0x22FFFFFF;
     private static final int NAME_INSET = 3;
     private final PikaStatsClient api = new PikaStatsClient();
     private final SocialTracker social = new SocialTracker();
@@ -240,6 +241,10 @@ public final class StatsController {
                     cellX += widths[c];
                     continue;
                 }
+                if (span != null && row.stats.status() == StatsView.Status.ERROR && statisticColumn(column)) {
+                    cellX += widths[c];
+                    continue;
+                }
                 if (column.equals("Head")) {
                     PlayerInfo info = mc.getNetworkHandler().getOnlinePlayer(row.name);
                     if (info != null) drawHead(mc, info, cellX + 5, rowY + 1);
@@ -398,10 +403,11 @@ public final class StatsController {
                 ChuStatsuConfig.tabEntryAnimation, ChuStatsuConfig.tabExitAnimation,
                 ChuStatsuConfig.tabEntryDuration, ChuStatsuConfig.tabExitDuration,
                 ChuStatsuConfig.tabResizeDuration);
-            String status = ColumnLayout.status(viewFor(name));
-            int[] span = status == null ? null : statusSpan(columns, viewFor(name));
+            StatsView view = viewFor(name);
+            String status = ColumnLayout.status(view);
+            int[] span = status == null ? null : statusSpan(columns, view);
             if (ChuStatsuConfig.tabAlternatingRows && (i & 1) == 1)
-                PanelStyle.rounded(rowX, rowY, rowX + tableWidth, rowY + 11, 0, 0x38303030);
+                PanelStyle.rounded(rowX, rowY, rowX + tableWidth, rowY + 11, 0, TAB_ROW_STRIPE);
             int cellX = rowX;
             for (int c = 0; c < columns.size(); c++) {
                 String column = columns.get(c);
@@ -414,8 +420,12 @@ public final class StatsController {
                     cellX += widths[c];
                     continue;
                 }
+                if (span != null && view.status() == StatsView.Status.ERROR && statisticColumn(column)) {
+                    cellX += widths[c];
+                    continue;
+                }
                 if (column.equals("Head")) drawHead(mc, info, cellX + 5, rowY + 1);
-                else if (ChuStatsuConfig.tabLoadingSkeleton && loading(viewFor(name))
+                else if (ChuStatsuConfig.tabLoadingSkeleton && loading(view)
                     && statisticColumn(column)) drawLoadingCell(cellX, rowY, widths[c], c);
                 else if (ColumnLayout.isName(column)) {
                     String value = tabName(info, waiting);
@@ -423,7 +433,7 @@ public final class StatsController {
                         ClientBadge.visible(info));
                     if (ClientBadge.visible(info)) ClientBadge.draw(cellX + NAME_INSET + FontText.width(value) + 2, rowY + 2);
                 } else {
-                    String value = ColumnLayout.cell(column, tabName(info, waiting), viewFor(name), info.getPing(),
+                    String value = ColumnLayout.cell(column, tabName(info, waiting), view, info.getPing(),
                         column.equals("HP") ? tabHealth(mc, name, inGame) : null);
                     FontText.draw(value, cellTextX(column, value, cellX, widths[c]), rowY + 1);
                 }
@@ -637,7 +647,7 @@ public final class StatsController {
         int name = -1;
         for (int i = 0; i < columns.size(); i++)
             if (ColumnLayout.isName(columns.get(i))) { name = i; break; }
-        if (ColumnLayout.rateLimited(view)) {
+        if (view != null && view.status() == StatsView.Status.ERROR) {
             int first = -1, last = -1;
             for (int i = name + 1; i < columns.size(); i++) {
                 if (!statisticColumn(columns.get(i))) continue;

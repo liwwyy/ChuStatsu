@@ -31,5 +31,9 @@ public final class ColumnLayoutTest {
         StatsView rateLimited = StatsView.error("someone", StatsView.Status.ERROR, "Rate limited");
         assertEquals("§cRATELIMITED", ColumnLayout.status(rateLimited));
         assertEquals("§cRATELIMITED", ColumnLayout.cell("FKDR", "someone", rateLimited, -1, null));
+        assertEquals("§cAPI HTTP 500", ColumnLayout.status(StatsView.error("someone",
+            StatsView.Status.ERROR, "API HTTP 500")));
+        assertEquals("§cAPI UNAVAILABLE", ColumnLayout.status(StatsView.error("someone",
+            StatsView.Status.ERROR, "API unavailable")));
     }
 }

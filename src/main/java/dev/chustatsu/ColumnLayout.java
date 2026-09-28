@@ -65,7 +65,9 @@ public final class ColumnLayout {
             case NICKED -> "§5NICKED";
             case API_DISABLED -> "§cAPI DISABLED";
             case NO_STATS -> "§7NO STATS";
-            case ERROR -> rateLimited(stats) ? "§cRATELIMITED" : null;
+            case ERROR -> rateLimited(stats) ? "§cRATELIMITED"
+                : "§c" + (stats.message() == null || stats.message().isBlank()
+                    ? "API ERROR" : stats.message().toUpperCase(java.util.Locale.ROOT));
             default -> null;
         };
     }

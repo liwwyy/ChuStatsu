@@ -144,6 +144,7 @@ public final class PikaStatsClient {
                 profileData == null ? null : profileData.level, null, null, null, null,
                 null, null, null, null, "API disabled");
             if (e.code == 400 || e.code == 404) return StatsView.error(username, StatsView.Status.NO_STATS, "No stats");
+            if (e.code == 429) return StatsView.error(username, StatsView.Status.ERROR, "Rate limited");
             return StatsView.error(username, StatsView.Status.ERROR, "API HTTP " + e.code);
         } catch (IOException | RuntimeException e) {
             return StatsView.error(username, StatsView.Status.ERROR, "API unavailable");

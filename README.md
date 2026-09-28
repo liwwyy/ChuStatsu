@@ -36,7 +36,7 @@ Close a running game before installing the new jar. The scripts use the full ins
 
 - Minecraft 1.8.9 uses Feather Gen2 mappings, Fabric Loader 0.19.5, OSL 0.21.0, and the installed OneConfig 1.2.6 API. OneConfig v1 is the sole configuration system.
 - The API worker has four threads and one shared 250 ms request schedule. A 429 response pauses all workers for the server's `Retry-After` period. Rate-limited entries retry on the first normal refresh after the cooldown; other errors retain a short retry delay. Cached profile data also supplies friend names.
-- The head column has room around the first separator, and names have a three-pixel inset. Rate-limited players show one status across their stat area; cached successful stats remain visible during transient failures.
+- The head column has room around the first separator, and names have a three-pixel inset. API errors show one status across the affected stat area, including HTTP errors and rate limits; cached successful stats remain visible during transient failures. Alternating TAB rows use a light translucent stripe for clearer contrast.
 - HUD/TAB editor handles are single-instance. Older saved profiles may contain a duplicate handle that OneConfig rejects; leave the saved files intact.
 
 ## References
@@ -49,4 +49,4 @@ The bundled Poppins font files include their OFL notice at `src/main/resources/a
 
 ## Latest local verification
 
-The required Gradle build passed all 30 tests. The remapped jar was installed in the moved beta instance; the built and installed copies both had SHA-256 `d44ffecab9598165915dba3550edeee112f92a93ad48e0c765ac02eca34564fb`. PrismLauncher could not start Minecraft because its Microsoft account token expired (`invalid_grant`), so this build has not yet been checked in a new full modlist launch. Sign in to PrismLauncher before using `scripts/launch-local.sh` again.
+The required Gradle build passed all 31 tests. The remapped jar was installed in the moved beta instance; the built and installed copies both have SHA-256 `061c8ab74163e9b765bbc0eef051f5212036b5f3e8df9e202ccd9fe8c2fe4b29`. The previous game process was closed before installation. PrismLauncher rejected normal and offline launch attempts because its Microsoft account grant expired (`invalid_grant`), so this build still needs a full modlist launch after sign-in.
