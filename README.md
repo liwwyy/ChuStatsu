@@ -8,7 +8,7 @@ ChuStatsu is an Ornithe/Fabric Gen2 mod for Minecraft 1.8.9 that displays PikaNe
 - BedWars waiting-room stat sorting, optional fixed match-team order, party and friend highlighting, denick hints, and team-colored italic names while spectating.
 - Profile and leaderboard caching through one paced API service. Requests can be limited to matches and waiting lobbies. Successful results survive temporary failures; HTTP 429 responses honor `Retry-After`, and rate-limited entries retry when the cooldown ends.
 - Rounded panels, optional glass, local or Catbox PNG backgrounds, Minecraft/Poppins/custom fonts, table motion, and separate OneConfig HUD handles.
-- `/chustatsu` opens settings. `/stats <player>` uses the same cached API service. Debug mode can save a raw TAB snapshot and log rate limits.
+- `/chustatsu` opens settings. `/stats <player>` uses the same cached API service. Debug mode can save a raw TAB snapshot and log rate limits and denick decisions to the console and `minecraft/config/chustatsu/debug/denick.log`.
 
 ## Build
 
@@ -36,7 +36,8 @@ Close a running game before installing the new jar. The scripts use the full ins
 
 - Minecraft 1.8.9 uses Feather Gen2 mappings, Fabric Loader 0.19.5, OSL 0.21.0, and the installed OneConfig 1.2.6 API. OneConfig v1 is the sole configuration system.
 - The API worker has four threads and one shared 250 ms request schedule. A 429 response pauses all workers for the server's `Retry-After` period. Rate-limited entries retry on the first normal refresh after the cooldown; other errors retain a short retry delay. Cached profile data also supplies friend names.
-- The head column has room around the first separator, and names have a three-pixel inset. API errors show one status across the affected stat area, including HTTP errors and rate limits; cached successful stats remain visible during transient failures. Alternating TAB rows use a light translucent stripe for clearer contrast.
+- The head column has room around the first separator, and names have a three-pixel inset. API errors show one status across the affected stat area, including HTTP errors and rate limits; cached successful stats remain visible during transient failures. HUD and TAB use PikaStats-style translucent white alternating rows, with row text lowered one pixel.
+- Denicking correlates an unambiguous same-team removal and addition. The default-on `Waiting room only` switch limits attempts to the pre-game waiting room; turning it off permits attempts in other PikaNetwork phases. Debug logging records the packet context and each accepted or rejected candidate.
 - HUD/TAB editor handles are single-instance. Older saved profiles may contain a duplicate handle that OneConfig rejects; leave the saved files intact.
 
 ## References
@@ -49,4 +50,4 @@ The bundled Poppins font files include their OFL notice at `src/main/resources/a
 
 ## Latest local verification
 
-The required Gradle build passed all 31 tests. The remapped jar was installed in the moved beta instance; the built and installed copies both have SHA-256 `061c8ab74163e9b765bbc0eef051f5212036b5f3e8df9e202ccd9fe8c2fe4b29`. The previous game process was closed before installation. PrismLauncher rejected normal and offline launch attempts because its Microsoft account grant expired (`invalid_grant`), so this build still needs a full modlist launch after sign-in.
+The required Gradle build passed all 34 tests. The remapped jar was installed in the moved beta instance; the built and installed copies both have SHA-256 `a6a16a0db5af77202c2ea5dbbecec3af70b899b8c1f5bcb6ec57a6591e37505a`. The previous project-local game process was closed before installation. The maintainer will launch and test this build manually; no launch was attempted during this update.

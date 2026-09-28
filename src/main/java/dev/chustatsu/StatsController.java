@@ -31,11 +31,11 @@ import org.lwjgl.opengl.GL11;
 public final class StatsController {
     private static final String[] NAMETAG_STATS = {"FKDR", "Level", "WLR", "Winstreak", "Final kills", "Wins", "Beds"};
     private static final int DIVIDER_COLOR = 0x80B6C4D0;
-    private static final int TAB_ROW_STRIPE = 0x22FFFFFF;
+    private static final int ROW_STRIPE = 0x11FFFFFF;
     private static final int NAME_INSET = 3;
     private final PikaStatsClient api = new PikaStatsClient();
     private final SocialTracker social = new SocialTracker();
-    private final DenickTracker denick = new DenickTracker();
+    private final DenickTracker denick = new DenickTracker(this::denickDiagnostic);
     private final OtherPartyTracker otherParties = new OtherPartyTracker();
     private final TableMotion hudMotion = new TableMotion();
     private final TableMotion tabMotion = new TableMotion();
@@ -227,8 +227,8 @@ public final class StatsController {
                 ChuStatsuConfig.hudResizeDuration);
             String status = ColumnLayout.status(row.stats);
             int[] span = status == null ? null : statusSpan(columns, row.stats);
-            if (ChuStatsuConfig.hudAlternatingRows && (i & 1) == 1) {
-                PanelStyle.rounded(rowX, rowY, rowX + totalWidth, rowY + 11, 0, 0x30303030);
+            if (ChuStatsuConfig.hudAlternatingRows && (i & 1) == 0) {
+                GuiElement.fill(rowX, rowY, rowX + totalWidth, rowY + 11, ROW_STRIPE);
             }
             for (int c = 0; c < columns.size(); c++) {
                 String column = columns.get(c);
@@ -236,7 +236,7 @@ public final class StatsController {
                     if (c == span[0]) {
                         int spanWidth = 0;
                         for (int k = span[0]; k <= span[1]; k++) spanWidth += widths[k];
-                        FontText.draw(status, cellX + Math.max(0, (spanWidth - FontText.width(status)) / 2), rowY + 1);
+                        FontText.draw(status, cellX + Math.max(0, (spanWidth - FontText.width(status)) / 2), rowY + 2);
                     }
                     cellX += widths[c];
                     continue;
@@ -253,10 +253,10 @@ public final class StatsController {
                     drawLoadingCell(cellX, rowY, widths[c], c);
                 } else if (ColumnLayout.isName(column)) {
                     drawNameCell(column, displayName(mc, row.name, waiting), nameSecondary(mc, row.name),
-                        cellX, rowY + 1, widths[c], false);
+                        cellX, rowY + 2, widths[c], false);
                 } else {
                     String value = ColumnLayout.cell(column, row.name, row.stats, row.ping, null);
-                    FontText.draw(value, cellTextX(column, value, cellX, widths[c]), rowY + 1);
+                    FontText.draw(value, cellTextX(column, value, cellX, widths[c]), rowY + 2);
                 }
                 cellX += widths[c];
             }
@@ -406,8 +406,8 @@ public final class StatsController {
             StatsView view = viewFor(name);
             String status = ColumnLayout.status(view);
             int[] span = status == null ? null : statusSpan(columns, view);
-            if (ChuStatsuConfig.tabAlternatingRows && (i & 1) == 1)
-                PanelStyle.rounded(rowX, rowY, rowX + tableWidth, rowY + 11, 0, TAB_ROW_STRIPE);
+            if (ChuStatsuConfig.tabAlternatingRows && (i & 1) == 0)
+                GuiElement.fill(rowX, rowY, rowX + tableWidth, rowY + 11, ROW_STRIPE);
             int cellX = rowX;
             for (int c = 0; c < columns.size(); c++) {
                 String column = columns.get(c);
@@ -415,7 +415,7 @@ public final class StatsController {
                     if (c == span[0]) {
                         int spanWidth = 0;
                         for (int k = span[0]; k <= span[1]; k++) spanWidth += widths[k];
-                        FontText.draw(status, cellX + Math.max(0, (spanWidth - FontText.width(status)) / 2), rowY + 1);
+                        FontText.draw(status, cellX + Math.max(0, (spanWidth - FontText.width(status)) / 2), rowY + 2);
                     }
                     cellX += widths[c];
                     continue;
@@ -429,13 +429,13 @@ public final class StatsController {
                     && statisticColumn(column)) drawLoadingCell(cellX, rowY, widths[c], c);
                 else if (ColumnLayout.isName(column)) {
                     String value = tabName(info, waiting);
-                    drawNameCell(column, value, nameSecondary(mc, name), cellX, rowY + 1, widths[c],
+                    drawNameCell(column, value, nameSecondary(mc, name), cellX, rowY + 2, widths[c],
                         ClientBadge.visible(info));
-                    if (ClientBadge.visible(info)) ClientBadge.draw(cellX + NAME_INSET + FontText.width(value) + 2, rowY + 2);
+                    if (ClientBadge.visible(info)) ClientBadge.draw(cellX + NAME_INSET + FontText.width(value) + 2, rowY + 3);
                 } else {
                     String value = ColumnLayout.cell(column, tabName(info, waiting), view, info.getPing(),
                         column.equals("HP") ? tabHealth(mc, name, inGame) : null);
-                    FontText.draw(value, cellTextX(column, value, cellX, widths[c]), rowY + 1);
+                    FontText.draw(value, cellTextX(column, value, cellX, widths[c]), rowY + 2);
                 }
                 cellX += widths[c];
             }
@@ -890,9 +890,42 @@ public final class StatsController {
     public void observeTeam(TeamS2CPacket packet) {
         if (!ChuStatsuConfig.denickEnabled) return;
         Minecraft mc = Minecraft.getInstance();
-        if (!PikaContext.active(mc, false)) return;
-        denick.onTeam(packet.getName(), packet.getAction(), packet.getMembers(),
-            System.currentTimeMillis(), PikaContext.inWaitingRoom(mc));
+        if (!PikaContext.active(mc, false)) {
+            denickDiagnostic("skipped reason=outside_pika_or_no_player team=" + packet.getName()
+                + " action=" + packet.getAction() + " members=" + packet.getMembers());
+            return;
+        }
+        boolean waiting = PikaContext.inWaitingRoom(mc);
+        if (packet.getAction() == 3 || packet.getAction() == 4)
+            denickDiagnostic("packet team=" + packet.getName() + " action=" + packet.getAction()
+                + " members=" + packet.getMembers() + " waiting=" + waiting
+                + " waitingRoomOnly=" + ChuStatsuConfig.denickWaitingOnly);
+        try {
+            denick.onTeam(packet.getName(), packet.getAction(), packet.getMembers(),
+                System.currentTimeMillis(), !ChuStatsuConfig.denickWaitingOnly || waiting);
+        } catch (RuntimeException error) {
+            java.io.StringWriter trace = new java.io.StringWriter();
+            error.printStackTrace(new java.io.PrintWriter(trace));
+            denickDiagnostic("failed reason=exception team=" + packet.getName()
+                + " action=" + packet.getAction() + " members=" + packet.getMembers()
+                + " waiting=" + waiting + " error=" + trace);
+        }
+    }
+
+    private void denickDiagnostic(String detail) {
+        if (!ChuStatsuConfig.debugMode) return;
+        String line = java.time.Instant.now() + " " + detail;
+        ChuStatsu.LOGGER.info("Denick {}", line);
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            java.nio.file.Path folder = mc.gameDir.toPath().resolve("config/chustatsu/debug");
+            java.nio.file.Files.createDirectories(folder);
+            java.nio.file.Files.writeString(folder.resolve("denick.log"), line + "\n",
+                java.nio.charset.StandardCharsets.UTF_8,
+                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+        } catch (java.io.IOException error) {
+            ChuStatsu.LOGGER.error("Could not write denick debug log", error);
+        }
     }
 
     public void observeTabList(TabListS2CPacket packet) {

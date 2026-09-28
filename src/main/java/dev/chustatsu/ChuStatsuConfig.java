@@ -345,8 +345,12 @@ public final class ChuStatsuConfig extends Config {
     @Slider(title = "Arrival window (ms)", min = 50, max = 2000, step = 50, category = "Party")
     public static int otherPartyWindowMs = 350;
 
-    @Switch(title = "Denick", description = "Track unambiguous waiting-room team name replacements", category = "Denick")
+    @Switch(title = "Denick", description = "Track unambiguous scoreboard team name replacements", category = "Denick")
     public static boolean denickEnabled = false;
+
+    @Switch(title = "Waiting room only", description = "Only attempt denicking during the pre-game waiting room",
+        category = "Denick")
+    public static boolean denickWaitingOnly = true;
 
     @Switch(title = "BedWars only", description = "Require a BedWars sidebar", category = "General")
     public static boolean bedWarsOnly = true;
