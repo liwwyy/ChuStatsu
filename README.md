@@ -1,6 +1,6 @@
 # ChuStatsu
 
-ChuStatsu is an Ornithe/Fabric Gen2 mod for Minecraft 1.8.9 that displays PikaNetwork BedWars statistics in a replacement TAB list, a movable HUD, and optional nametags. It uses OneConfig v1 for settings and the HUD editor. PikaStats is a reference for observable behavior; ChuStatsu has its own implementation.
+ChuStatsu v1.0 is an Ornithe/Fabric Gen2 mod for Minecraft 1.8.9 that displays PikaNetwork BedWars statistics in a replacement TAB list, a movable HUD, and optional nametags. It uses OneConfig v1 for settings and the HUD editor. PikaStats is a reference for observable behavior; ChuStatsu has its own implementation.
 
 ## Features
 
@@ -19,7 +19,7 @@ JAVA_HOME=/home/user/.local/share/PrismLauncher/java/java-runtime-epsilon \
 GRADLE_USER_HOME="$PWD/.gradle" ./gradlew build
 ```
 
-The remapped mod jar is `build/libs/chustatsu-0.1.0+mc1.8.9.jar`. The build runs the JUnit and local HTTP tests.
+The remapped mod jar is `build/libs/chustatsu-1.0+mc1.8.9.jar`. The build runs the JUnit and local HTTP tests.
 
 ## Local OneClient beta
 
@@ -30,7 +30,7 @@ The install and launch scripts default to the maintainer's PrismLauncher instanc
 ./scripts/launch-local.sh
 ```
 
-Close a running game before installing the new jar. The scripts use the full installed modlist; an authenticated account is needed for live PikaNetwork checks. Launcher files, game instances, Gradle caches, build output, and local research are excluded from Git.
+Close a running game before installing the new jar. The installer moves older ChuStatsu jars into ignored `backups/replaced-jars/` so the instance contains one version. The scripts use the full installed modlist; an authenticated account is needed for live PikaNetwork checks. Launcher files, game instances, Gradle caches, build output, and local research are excluded from Git.
 
 ## Implementation notes
 
@@ -39,6 +39,7 @@ Close a running game before installing the new jar. The scripts use the full ins
 - The head column has room around the first separator, and names have a three-pixel inset. API errors show one status across the affected stat area, including HTTP errors and rate limits; cached successful stats remain visible during transient failures. HUD and TAB use PikaStats-style translucent white alternating rows, drawn with alpha testing disabled, with row text lowered one pixel.
 - Denicking correlates an unambiguous same-team removal and addition. The default-on `Waiting room only` switch limits attempts to the pre-game waiting room; turning it off permits attempts in other PikaNetwork phases. Debug logging records the packet context and each accepted or rejected candidate.
 - HUD/TAB editor handles are single-instance. Older saved profiles may contain a duplicate handle that OneConfig rejects; leave the saved files intact.
+- A fresh TAB handle can be saved as `TopLeft` before OneConfig has a screen width. ChuStatsu detects that uninitialized layout reference and moves it to a centered anchor on first render. An existing manually positioned handle keeps its position.
 
 ## References
 
@@ -50,4 +51,4 @@ The bundled Poppins font files include their OFL notice at `src/main/resources/a
 
 ## Latest local verification
 
-The required Gradle build passed all 34 tests. The remapped jar was installed in the moved beta instance; the built and installed copies both have SHA-256 `4152c7294e14f2678ed8e3c601e66c8b7851484bd297558d738f1b470d11a0c3`. The previous project-local game process was closed before installation. The maintainer will launch and test this build manually; no launch was attempted during this update. The September 28 denick log contains one inferred mapping outside the waiting room and none from 991 waiting-room team packets, so this capture does not confirm successful waiting-room denicking.
+The required Gradle build passed all 36 tests. The remapped v1.0 jar was installed in both the project dev beta and the fresh OneClient alpha.5 instance; the built and installed copies all have SHA-256 `9deecf27840db5e0d6ab553f24c15a609aeac752600fb8e924d6730f302a323a`. No game was launched during this update, so the fresh TAB position still needs the maintainer's visual check. The September 28 denick log contains one inferred mapping outside the waiting room and none from 991 waiting-room team packets, so this capture does not confirm successful waiting-room denicking.

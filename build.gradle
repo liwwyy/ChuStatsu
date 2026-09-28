@@ -37,6 +37,12 @@ dependencies {
         transitive = false
     }
     testImplementation 'junit:junit:4.13.2'
+    testImplementation("org.polyfrost.oneconfig:hud:${project.oneconfig_version}") {
+        transitive = false
+    }
+    testRuntimeOnly("org.jetbrains.kotlin:kotlin-stdlib:2.4.20") {
+        transitive = false
+    }
 }
 
 processResources {

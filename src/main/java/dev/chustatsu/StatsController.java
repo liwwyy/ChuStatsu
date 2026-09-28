@@ -363,11 +363,17 @@ public final class StatsController {
         if (handle != null) handle.size(panelWidth + 14, panelHeight + 8 + overviewHeight);
         if (handle != null && !tabCenterMigrated) {
             tabCenterMigrated = true;
-            if (handle.getSection() == Section.TopCenter && Math.abs(handle.getRelativeX() - 85f) < 1f)
-                handle.setX(((float) window.getScaledWidth() - (panelWidth + 14) * handle.getEffectiveScale()) / 2f);
+            if (shouldCenterNewTab(handle.getSection(), handle.getLayoutRefW())
+                || handle.getSection() == Section.TopCenter && Math.abs(handle.getRelativeX() - 85f) < 1f) {
+                handle.setSection(Section.TopCenter);
+                handle.setRelativeX(0f);
+            }
         }
+        boolean centered = handle != null && handle.getSection() == Section.TopCenter
+            && Math.abs(handle.getRelativeX()) < .5f;
         int x = handle == null ? Math.max(4, ((int) window.getScaledWidth() - tableWidth) / 2)
-            : Math.round(handle.getX()) + 7;
+            : centered ? centeredTabX((int) window.getScaledWidth(), panelWidth, handle.getEffectiveScale())
+                : Math.round(handle.getX()) + 7;
         int y = handle == null ? 26 : Math.round(handle.getY()) + 4;
         float scale = handle == null ? 1f : handle.getEffectiveScale();
         GL11.glPushMatrix();
@@ -454,6 +460,14 @@ public final class StatsController {
             FontText.draw(matchOverview, overviewX, overviewY);
         }
         GL11.glPopMatrix();
+    }
+
+    static boolean shouldCenterNewTab(Section section, float layoutRefWidth) {
+        return section == Section.TopLeft && layoutRefWidth <= 0f;
+    }
+
+    static int centeredTabX(int screenWidth, int panelWidth, float scale) {
+        return Math.round((screenWidth - (panelWidth + 14) * scale) / 2f) + 7;
     }
 
     private String tabName(PlayerInfo info, boolean waiting) {
