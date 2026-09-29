@@ -8,6 +8,19 @@ import org.lwjgl.opengl.GLContext;
 
 /** Rounded table surfaces with a local framebuffer blur when shaders are available. */
 final class PanelStyle {
+    private static final int CORNER_STEPS = 8;
+    private static final float[][] CORNER_COS = new float[4][CORNER_STEPS + 1];
+    private static final float[][] CORNER_SIN = new float[4][CORNER_STEPS + 1];
+    static {
+        for (int corner = 0; corner < 4; corner++) {
+            for (int step = 0; step <= CORNER_STEPS; step++) {
+                double angle = Math.toRadians(180 + corner * 90 + step * 90.0 / CORNER_STEPS);
+                CORNER_COS[corner][step] = (float) Math.cos(angle);
+                CORNER_SIN[corner][step] = (float) Math.sin(angle);
+            }
+        }
+    }
+
     private static final String VERTEX = "#version 120\n"
         + "varying vec2 localPos;\n"
         + "void main(){ localPos=gl_MultiTexCoord0.xy; gl_Position=gl_ModelViewProjectionMatrix*gl_Vertex; }\n";
@@ -57,13 +70,22 @@ final class PanelStyle {
             float blue = (argb & 255) / 255f;
             float alpha = ((argb >>> 24) & 255) / 255f;
             GL11.glColor4f(red, green, blue, alpha);
-            GL11.glBegin(GL11.GL_TRIANGLE_FAN);
-            GL11.glVertex2f((left + right) / 2, (top + bottom) / 2);
-            outline(left, top, right, bottom, r, -0.5f, red, green, blue, alpha, false);
-            GL11.glEnd();
-            GL11.glBegin(GL11.GL_TRIANGLE_STRIP);
-            outline(left, top, right, bottom, r, -0.5f, red, green, blue, alpha, true);
-            GL11.glEnd();
+            if (r == 0f) {
+                GL11.glBegin(GL11.GL_QUADS);
+                GL11.glVertex2f(left, top);
+                GL11.glVertex2f(right, top);
+                GL11.glVertex2f(right, bottom);
+                GL11.glVertex2f(left, bottom);
+                GL11.glEnd();
+            } else {
+                GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+                GL11.glVertex2f((left + right) / 2, (top + bottom) / 2);
+                outline(left, top, right, bottom, r, -0.5f, red, green, blue, alpha, false);
+                GL11.glEnd();
+                GL11.glBegin(GL11.GL_TRIANGLE_STRIP);
+                outline(left, top, right, bottom, r, -0.5f, red, green, blue, alpha, true);
+                GL11.glEnd();
+            }
         } finally {
             if (previousProgram != 0) GL20.glUseProgram(previousProgram);
             GL11.glPopAttrib();
@@ -76,9 +98,8 @@ final class PanelStyle {
         float[] cx = {left + radius, right - radius, right - radius, left + radius};
         float[] cy = {top + radius, top + radius, bottom - radius, bottom - radius};
         for (int corner = 0; corner < 4; corner++) {
-            for (int step = 0; step <= 24; step++) {
-                double angle = Math.toRadians(180 + corner * 90 + step * 90.0 / 24);
-                float cosine = (float) Math.cos(angle), sine = (float) Math.sin(angle);
+            for (int step = 0; step <= CORNER_STEPS; step++) {
+                float cosine = CORNER_COS[corner][step], sine = CORNER_SIN[corner][step];
                 GL11.glColor4f(red, green, blue, alpha);
                 GL11.glVertex2f(cx[corner] + cosine * Math.max(0, radius + inset),
                     cy[corner] + sine * Math.max(0, radius + inset));

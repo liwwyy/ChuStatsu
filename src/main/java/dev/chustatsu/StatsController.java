@@ -59,7 +59,8 @@ public final class StatsController {
         if (ChuStatsuConfig.migrateNameColumns()) ChuStatsu.saveConfig();
         if (++ticks % 20 != 0) return;
         Minecraft mc = Minecraft.getInstance();
-        boolean apiAllowed = apiAllowed(mc);
+        PikaContext.SidebarState sidebar = PikaContext.sidebarState(mc);
+        boolean apiAllowed = apiAllowed(mc, sidebar);
         if (pendingLookup != null && apiAllowed) {
             StatsView result = api.get(pendingLookup, ChuStatsuConfig.mode, ChuStatsuConfig.period,
                 ChuStatsuConfig.cacheSeconds);
@@ -68,7 +69,7 @@ public final class StatsController {
                 pendingLookup = null;
             }
         }
-        if (!ChuStatsuConfig.enabled || !allowed(mc)) {
+        if (!ChuStatsuConfig.enabled || !allowed(mc, sidebar)) {
             prepareTeams(mc, false);
             rows = List.of();
             hudLayout.clear();
@@ -93,8 +94,8 @@ public final class StatsController {
                 if (name != null && name.matches("[A-Za-z0-9_]{3,16}")) names.add(name);
             }
         }
-        boolean waiting = PikaContext.inWaitingRoom(mc);
-        boolean inGame = PikaContext.inGame(mc);
+        boolean waiting = sidebar.waiting();
+        boolean inGame = sidebar.inGame();
         prepareTeams(mc, inGame);
         otherParties.setWaiting(waiting && ChuStatsuConfig.detectOtherParties);
         if (waiting && ChuStatsuConfig.detectOtherParties) {
@@ -130,12 +131,13 @@ public final class StatsController {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
-        if (!allowed(mc) || rows.isEmpty()) {
+        PikaContext.SidebarState sidebar = PikaContext.sidebarState(mc);
+        if (!allowed(mc, sidebar) || rows.isEmpty()) {
             hudMotion.snapHidden();
             hudLayout.clear();
             return;
         }
-        boolean show = visible(mc, ChuStatsuConfig.hudAlwaysShow,
+        boolean show = visible(mc, sidebar, ChuStatsuConfig.hudAlwaysShow,
             ChuStatsuConfig.hudShowWaiting, ChuStatsuConfig.hudShowInGame)
             && !(ChuStatsuConfig.hideHudWhileTab && mc.options.playerListKey.isPressed());
         int motionMode = show ? ChuStatsuConfig.hudShowAnimation : ChuStatsuConfig.hudHideAnimation;
@@ -143,9 +145,13 @@ public final class StatsController {
             ChuStatsuConfig.hudShowDuration, ChuStatsuConfig.hudHideDuration);
         if (progress <= 0f) return;
         Window window = new Window(mc);
-        boolean waiting = PikaContext.inWaitingRoom(mc);
-        boolean showHeader = ChuStatsuConfig.hudShowHeader && apiAllowed(mc);
-        List<String> columns = visibleColumns(ChuStatsuConfig.hudColumns, false);
+        boolean waiting = sidebar.waiting();
+        boolean inGame = sidebar.inGame();
+        boolean showHeader = ChuStatsuConfig.hudShowHeader && apiAllowed(mc, sidebar);
+        List<String> columns = visibleColumns(ChuStatsuConfig.hudColumns, false, sidebar);
+        Map<String, String> displayNames = new HashMap<>();
+        for (Row row : rows)
+            displayNames.put(row.name, displayName(mc, row.name, waiting, inGame));
         int padding = columnPadding();
         int[] widths = new int[columns.size()];
         for (int c = 0; c < columns.size(); c++) {
@@ -156,7 +162,7 @@ public final class StatsController {
             widths[c] = FontText.width(ColumnLayout.header(columns.get(c))) + padding;
             for (Row row : rows) {
                 String column = columns.get(c);
-                String name = displayName(mc, row.name, waiting);
+                String name = displayNames.get(row.name);
                 if (ColumnLayout.status(row.stats) == null || ColumnLayout.isName(column)
                     || column.equals("Level") && row.stats.level() != null) {
                     int content = FontText.width(ColumnLayout.cell(column, name, row.stats, row.ping, null));
@@ -247,12 +253,14 @@ public final class StatsController {
                 }
                 if (column.equals("Head")) {
                     PlayerInfo info = mc.getNetworkHandler().getOnlinePlayer(row.name);
-                    if (info != null) drawHead(mc, info, cellX + 5, rowY + 1);
+                    if (info != null) drawHead(mc, info, cellX + 5, rowY + 2);
                 } else if (ChuStatsuConfig.hudLoadingSkeleton && row.stats.status() == StatsView.Status.LOADING
                     && statisticColumn(column)) {
                     drawLoadingCell(cellX, rowY, widths[c], c);
                 } else if (ColumnLayout.isName(column)) {
-                    drawNameCell(column, displayName(mc, row.name, waiting), nameSecondary(mc, row.name),
+                    String displayed = displayNames.get(row.name);
+                    if (displayed == null) displayed = displayName(mc, row.name, waiting, inGame);
+                    drawNameCell(column, displayed, nameSecondary(mc, row.name),
                         cellX, rowY + 2, widths[c], false);
                 } else {
                     String value = ColumnLayout.cell(column, row.name, row.stats, row.ping, null);
@@ -271,29 +279,40 @@ public final class StatsController {
 
     public boolean shouldRenderTab() {
         Minecraft mc = Minecraft.getInstance();
+        if (!ChuStatsuConfig.enabled || !ChuStatsuConfig.tabEnabled || mc.options == null
+            || !mc.options.playerListKey.isPressed()) return false;
+        return shouldRenderTab(mc, PikaContext.sidebarState(mc));
+    }
+
+    private boolean shouldRenderTab(Minecraft mc, PikaContext.SidebarState sidebar) {
         return ChuStatsuConfig.enabled && ChuStatsuConfig.tabEnabled && mc.options != null
-            && mc.options.playerListKey.isPressed() && allowed(mc)
-            && visible(mc, ChuStatsuConfig.tabAlwaysShow, ChuStatsuConfig.tabShowWaiting,
+            && mc.options.playerListKey.isPressed() && allowed(mc, sidebar)
+            && visible(mc, sidebar, ChuStatsuConfig.tabAlwaysShow, ChuStatsuConfig.tabShowWaiting,
                 ChuStatsuConfig.tabShowInGame);
     }
 
     public void renderTab() {
         Minecraft mc = Minecraft.getInstance();
-        if (!ChuStatsuConfig.enabled || !ChuStatsuConfig.tabEnabled || !allowed(mc)
-            || mc.getNetworkHandler() == null) {
+        if (!ChuStatsuConfig.enabled || !ChuStatsuConfig.tabEnabled || mc.getNetworkHandler() == null) {
             tabMotion.snapHidden();
             return;
         }
-        boolean show = shouldRenderTab();
+        if (mc.options != null && !mc.options.playerListKey.isPressed() && tabMotion.isHidden()) return;
+        PikaContext.SidebarState sidebar = PikaContext.sidebarState(mc);
+        if (!allowed(mc, sidebar)) {
+            tabMotion.snapHidden();
+            return;
+        }
+        boolean show = shouldRenderTab(mc, sidebar);
         int motionMode = show ? ChuStatsuConfig.tabShowAnimation : ChuStatsuConfig.tabHideAnimation;
         float progress = visibilityProgress(tabMotion, show, motionMode,
             ChuStatsuConfig.tabShowDuration, ChuStatsuConfig.tabHideDuration);
         if (progress <= 0f) return;
-        boolean waiting = PikaContext.inWaitingRoom(mc);
-        boolean inGame = PikaContext.inGame(mc);
+        boolean waiting = sidebar.waiting();
+        boolean inGame = sidebar.inGame();
         prepareTeams(mc, inGame);
-        boolean showHeader = ChuStatsuConfig.tabShowHeader && apiAllowed(mc);
-        List<String> columns = visibleColumns(ChuStatsuConfig.tabColumns, true);
+        boolean showHeader = ChuStatsuConfig.tabShowHeader && apiAllowed(mc, sidebar);
+        List<String> columns = visibleColumns(ChuStatsuConfig.tabColumns, true, sidebar);
         int padding = columnPadding();
         ArrayList<PlayerInfo> players = new ArrayList<>();
         for (PlayerInfo info : mc.getNetworkHandler().getOnlinePlayers()) {
@@ -314,6 +333,12 @@ public final class StatsController {
             return;
         }
         int shown = Math.min(ChuStatsuConfig.tabMaxPlayers, players.size());
+        Map<String, String> displayNames = new HashMap<>();
+        for (int i = 0; i < shown; i++) {
+            PlayerInfo info = players.get(i);
+            String name = info.getProfile().getName();
+            displayNames.put(name, displayName(mc, name, waiting, inGame));
+        }
         int[] widths = new int[columns.size()];
         for (int c = 0; c < columns.size(); c++) {
             String column = columns.get(c);
@@ -321,7 +346,7 @@ public final class StatsController {
             for (int i = 0; i < shown; i++) {
                 PlayerInfo info = players.get(i);
                 String name = info.getProfile().getName();
-                String value = ColumnLayout.cell(column, tabName(info, waiting), viewFor(name), info.getPing(),
+                String value = ColumnLayout.cell(column, displayNames.get(name), viewFor(name), info.getPing(),
                     column.equals("HP") ? tabHealth(mc, name, inGame) : null);
                 StatsView state = viewFor(name);
                 if (ColumnLayout.status(state) == null || ColumnLayout.isName(column)
@@ -402,6 +427,8 @@ public final class StatsController {
             var animated = displayRows.get(i);
             PlayerInfo info = animated.value();
             String name = info.getProfile().getName();
+            String displayed = displayNames.get(name);
+            if (displayed == null) displayed = displayName(mc, name, waiting, inGame);
             int rowX = x + rowOffsetX(tabLayout, animated, now,
                 ChuStatsuConfig.tabEntryAnimation, ChuStatsuConfig.tabExitAnimation,
                 ChuStatsuConfig.tabEntryDuration, ChuStatsuConfig.tabExitDuration);
@@ -430,16 +457,16 @@ public final class StatsController {
                     cellX += widths[c];
                     continue;
                 }
-                if (column.equals("Head")) drawHead(mc, info, cellX + 5, rowY + 1);
+                if (column.equals("Head")) drawHead(mc, info, cellX + 5, rowY + 2);
                 else if (ChuStatsuConfig.tabLoadingSkeleton && loading(view)
                     && statisticColumn(column)) drawLoadingCell(cellX, rowY, widths[c], c);
                 else if (ColumnLayout.isName(column)) {
-                    String value = tabName(info, waiting);
+                    String value = displayed;
                     drawNameCell(column, value, nameSecondary(mc, name), cellX, rowY + 2, widths[c],
                         ClientBadge.visible(info));
                     if (ClientBadge.visible(info)) ClientBadge.draw(cellX + NAME_INSET + FontText.width(value) + 2, rowY + 3);
                 } else {
-                    String value = ColumnLayout.cell(column, tabName(info, waiting), view, info.getPing(),
+                    String value = ColumnLayout.cell(column, displayed, view, info.getPing(),
                         column.equals("HP") ? tabHealth(mc, name, inGame) : null);
                     FontText.draw(value, cellTextX(column, value, cellX, widths[c]), rowY + 2);
                 }
@@ -470,15 +497,8 @@ public final class StatsController {
         return Math.round((screenWidth - (panelWidth + 14) * scale) / 2f) + 7;
     }
 
-    private String tabName(PlayerInfo info, boolean waiting) {
-        String name = info.getProfile().getName();
-        String display = displayName(Minecraft.getInstance(), name, waiting);
-        return display;
-    }
-
-    private String displayName(Minecraft mc, String name, boolean waiting) {
+    private String displayName(Minecraft mc, String name, boolean waiting, boolean inGame) {
         PlayerInfo info = mc.getNetworkHandler() == null ? null : mc.getNetworkHandler().getOnlinePlayer(name);
-        boolean inGame = PikaContext.inGame(mc);
         if (info != null && info.getGameMode() == WorldSettings.GameMode.SPECTATOR && inGame) {
             String color = ChuStatsuConfig.spectatorTeamColor
                 ? teamIdentity(mc, name).color() : "§7";
@@ -722,8 +742,13 @@ public final class StatsController {
     }
 
     private static List<String> visibleColumns(String[] configured, boolean tab) {
+        return visibleColumns(configured, tab, PikaContext.sidebarState(Minecraft.getInstance()));
+    }
+
+    private static List<String> visibleColumns(String[] configured, boolean tab,
+                                               PikaContext.SidebarState sidebar) {
         List<String> selected = ColumnLayout.selected(configured, tab);
-        if (!apiAllowed(Minecraft.getInstance())) {
+        if (!apiAllowed(Minecraft.getInstance(), sidebar)) {
             List<String> names = selected.stream().filter(column -> column.equals("Head")
                 || ColumnLayout.isName(column)).toList();
             return names.stream().anyMatch(ColumnLayout::isName) ? names
@@ -734,7 +759,7 @@ public final class StatsController {
         List<String> visible = selected.stream()
             .filter(column -> !dynamicName || !column.equals("Rank"))
             .filter(column -> !tab || !column.equals("HP") || !ChuStatsuConfig.hpOnlyInGame
-                || PikaContext.inGame(Minecraft.getInstance()))
+                || sidebar.inGame())
             .toList();
         return visible.isEmpty() ? List.of("Dynamic name box") : visible;
     }
@@ -743,9 +768,10 @@ public final class StatsController {
         return view == null || view.status() == StatsView.Status.LOADING;
     }
 
-    private static boolean apiAllowed(Minecraft mc) {
+    private static boolean apiAllowed(Minecraft mc, PikaContext.SidebarState sidebar) {
         return !ChuStatsuConfig.apiOnlyInMatchOrWaiting
-            || PikaContext.inWaitingRoom(mc) || PikaContext.inGame(mc);
+            || mc != null && mc.player != null && !mc.isSingleplayer()
+                && (sidebar.waiting() || sidebar.inGame());
     }
 
     private static boolean statisticColumn(String column) {
@@ -1010,8 +1036,18 @@ public final class StatsController {
         return PikaContext.active(mc, ChuStatsuConfig.bedWarsOnly, ChuStatsuConfig.onlyOnPika);
     }
 
+    private static boolean allowed(Minecraft mc, PikaContext.SidebarState sidebar) {
+        return PikaContext.active(mc, ChuStatsuConfig.bedWarsOnly, ChuStatsuConfig.onlyOnPika, sidebar);
+    }
+
     private static boolean visible(Minecraft mc, boolean always, boolean waiting, boolean inGame) {
         return always || (waiting && PikaContext.inWaitingRoom(mc)) || (inGame && PikaContext.inGame(mc));
+    }
+
+    private static boolean visible(Minecraft mc, PikaContext.SidebarState sidebar,
+                                   boolean always, boolean waiting, boolean inGame) {
+        return always || mc != null && mc.player != null && !mc.isSingleplayer()
+            && ((waiting && sidebar.waiting()) || (inGame && sidebar.inGame()));
     }
 
     private static String health(Minecraft mc, String name) {

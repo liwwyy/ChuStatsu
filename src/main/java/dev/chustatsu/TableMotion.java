@@ -24,6 +24,10 @@ final class TableMotion {
         snap(false);
     }
 
+    boolean isHidden() {
+        return !target && value <= 0f;
+    }
+
     void snap(boolean show) {
         value = show ? 1f : 0f;
         from = value;
